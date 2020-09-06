@@ -1,44 +1,59 @@
-<!DOCTYPE html>
 <html>
   <head>
-    <title>video chatserver - chat</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <title>chat</title>
+    <script
+      type="text/javascript"
+      src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"
+    ></script>
   </head>
   <body>
-    <div><a href="/">home</a></div>
-    <div><a href="/chat">chat</a></div>
-    <form action="" method="POST">
-      <input type="text" class="message"/>
+    <div><a href="#" onclick="leave_room();">Home</a></div>
+    <div>
+      <input placeholder="message" class="message" />
       <button id="button">send</button>
-    </form>
-
+    </div>
     <div class="messages"></div>
 
-    <script type="text/javascript">
+    <script type="text/javascript" charset="utf-8">
+      var socket;
       // 연결
-      var socket = io.connect(
-        "http://" + document.domain + ":" + location.port
+      socket = io.connect(
+        "http://" + document.domain + ":" + location.port + "/chat"
       );
-
-      // 전송
-      socket.on("connect", function () {
-        socket.emit("chat client", { data: "Client Connected" });
-
-        $("button").on("click", function (e) {
-          e.preventDefault();
-          var user_input = $("input.message").val();
-          socket.emit("chat client", { message: user_input });
-          $("input.message").val("").focus();
-        });
+      // room 가입
+      socket.on("connect", () => {
+        socket.emit("joined", {});
       });
-
+      // 전송
+      $("button").on("click", (e) => {
+        e.preventDefault();
+        send_message();
+      });
+      $("input.message").keypress((e) => {
+        if (e.which === 13) send_message();
+      });
+      function send_message() {
+        var user_input = $("input.message").val();
+        socket.emit("text", { message: user_input });
+        $("input.message").val("").focus();
+      }
       // 수신
-      socket.on("chat server", function (msg) {
+      socket.on("message", (msg) => {
         if (typeof msg.message !== "undefined") {
           $("div.messages").append("<div>" + msg.message + "</div>");
         }
       });
+
+      function leave_room() {
+        socket.emit("left", {}, () => {
+          socket.disconnect();
+          window.location.href = "{{ url_for('test.index') }}";
+        });
+      }
     </script>
   </body>
 </html>

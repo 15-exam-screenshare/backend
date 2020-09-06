@@ -1,52 +1,40 @@
-from flask import Blueprint, render_template
-from app import socketio
+#!/bin/env python
+from flask import render_template, session, redirect, url_for,  request
+from flask_socketio import emit, join_room, leave_room
+from .. import socketio
 from . import mod_test
 
-@mod_test.route("/chat")
+@mod_test.route('/', methods=['GET','POST'])
+def index():
+    if request.method == 'POST':
+        name =  request.form['name']
+        if name is not None:
+            session['name'] = name
+            return redirect(url_for('test.chat'))
+    return render_template('chatindex.html')
+
+@mod_test.route('/chat')
 def chat():
-    return render_template("chat.html")
+    name = session.get('name', '')
+    if name == '':
+        return redirect(url_for('test.index'))
+    return render_template('chat.html', name=name)
 
-def messageReceived(methods=['GET', 'POST']):
-    print('message was received!!!')
 
-@socketio.on('chat client')
-def handle_chat(json, methods=['GET', 'POST']):
-    print('chat client: ' + str(json))
-    socketio.emit('chat server', json, callback=messageReceived)
+@socketio.on('joined', namespace='/chat')
+def enter(message):
+    room = 1
+    join_room(room)
 
-################################################################################
 
-@mod_test.route("/videochat")
-def videochat():
-    return render_template("videochat.html")
+@socketio.on('text', namespace='/chat')
+def text(message):
+    room = 1
+    emit('message', {'message': session.get('name') + ':' + message['message']}, room=room)
 
-@socketio.on('video')
-def handle_vdieo(data_video):
-    pass
 
-################################################################################
+@socketio.on('left', namespace='/chat')
+def leave(message):
+    room = 1
+    leave_room(room)
 
-@mod_test.route("/streamingauido")
-def streamingaudio():
-    return render_template("streamingaudio.html")
-# @socketio.on('image')
-# def image(data_image):
-#     sbuf = StringIO()
-#     sbuf.write(data_image)
-
-#     # decode and convert into image
-#     b = io.BytesIO(base64.b64decode(data_image))
-#     pimg = Image.open(b)
-
-#     # Process the image frame
-#     frame = imutils.resize(frame, width=700)
-#     frame = cv2.flip(frame, 1)
-#     imgencode = cv2.imencode('.jpg', frame)[1]
-
-#     # base64 encode
-#     stringData = base64.b64encode(imgencode).decode('utf-8')
-#     b64_src = 'data:image/jpg;base64,'
-#     stringData = b64_src + stringData
-
-#     # emit the frame back
-#     emit('response_back', stringData)
